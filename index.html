@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PM Intelligence Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0d0f14;
+    --bg2: #13161d;
+    --bg3: #1a1e27;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.12);
+    --text: #e8eaf0;
+    --text2: #8b90a0;
+    --text3: #555b6e;
+    --accent: #4ade80;
+    --accent2: #60a5fa;
+    --pink: #f472b6;
+    --amber: #fbbf24;
+    --font: 'Syne', sans-serif;
+    --mono: 'IBM Plex Mono', monospace;
+  }
+
+  html { font-size: 14px; }
+  body { background: var(--bg); color: var(--text); font-family: var(--font); min-height: 100vh; }
+
+  /* ── Layout ── */
+  .layout { display: grid; grid-template-columns: 220px 1fr; min-height: 100vh; }
+  .sidebar { background: var(--bg2); border-right: 1px solid var(--border); padding: 28px 0; display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+  .main { padding: 32px 36px; overflow-x: hidden; }
+
+  /* ── Sidebar ── */
+  .logo { padding: 0 20px 28px; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
+  .logo-mark { font-size: 13px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); font-family: var(--mono); }
+  .logo-sub { font-size: 10px; color: var(--text3); margin-top: 3px; font-family: var(--mono); letter-spacing: .06em; }
+  .nav-section { padding: 0 12px; margin-bottom: 8px; }
+  .nav-label { font-size: 9px; letter-spacing: .14em; text-transform: uppercase; color: var(--text3); padding: 0 8px; margin-bottom: 6px; }
+  .nav-item { display: flex; align-items: center; gap: 9px; padding: 8px 10px; border-radius: 8px; cursor: pointer; font-size: 13px; color: var(--text2); transition: all .15s; user-select: none; }
+  .nav-item:hover { background: var(--bg3); color: var(--text); }
+  .nav-item.active { background: rgba(74,222,128,.1); color: var(--accent); }
+  .nav-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .nav-count { margin-left: auto; font-size: 10px; font-family: var(--mono); background: var(--bg3); padding: 2px 7px; border-radius: 10px; color: var(--text3); }
+  .sidebar-footer { margin-top: auto; padding: 20px; border-top: 1px solid var(--border); }
+  .update-tag { font-size: 10px; font-family: var(--mono); color: var(--text3); }
+
+  /* ── Header ── */
+  .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 28px; }
+  .page-title { font-size: 22px; font-weight: 700; letter-spacing: -.02em; color: var(--text); }
+  .page-sub { font-size: 12px; color: var(--text3); font-family: var(--mono); margin-top: 5px; }
+  .header-actions { display: flex; gap: 10px; align-items: center; }
+  .btn { font-family: var(--font); font-size: 12px; padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border2); background: var(--bg2); color: var(--text2); cursor: pointer; transition: all .15s; }
+  .btn:hover { background: var(--bg3); color: var(--text); }
+  .btn-primary { background: var(--accent); color: #0d0f14; border-color: var(--accent); font-weight: 700; }
+  .btn-primary:hover { opacity: .9; }
+
+  /* ── Metric Cards ── */
+  .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 28px; }
+  .metric { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px; }
+  .metric-icon { font-size: 16px; margin-bottom: 12px; }
+  .metric-label { font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--text3); margin-bottom: 8px; }
+  .metric-value { font-size: 26px; font-weight: 700; font-family: var(--mono); color: var(--text); line-height: 1; }
+  .metric-value span { font-size: 14px; font-weight: 400; color: var(--text3); }
+  .metric-delta { font-size: 11px; color: var(--text3); margin-top: 8px; font-family: var(--mono); }
+  .delta-up { color: var(--accent); }
+  .delta-dn { color: #f87171; }
+
+  /* ── Charts ── */
+  .charts { display: grid; grid-template-columns: 1.4fr 1fr; gap: 14px; margin-bottom: 28px; }
+  .chart-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+  .chart-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+  .chart-title { font-size: 13px; font-weight: 500; color: var(--text); }
+  .legend { display: flex; gap: 14px; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text3); font-family: var(--mono); }
+  .legend-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+
+  /* ── Table Section ── */
+  .table-section { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+  .table-toolbar { display: flex; align-items: center; gap: 12px; padding: 16px 20px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  .search-box { flex: 1; min-width: 180px; max-width: 260px; }
+  .search-box input { width: 100%; background: var(--bg3); border: 1px solid var(--border); color: var(--text); font-family: var(--font); font-size: 13px; padding: 8px 12px 8px 32px; border-radius: 8px; outline: none; transition: border .15s; }
+  .search-box input:focus { border-color: var(--border2); }
+  .search-box { position: relative; }
+  .search-icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); font-size: 13px; color: var(--text3); pointer-events: none; }
+  .filter-group { display: flex; gap: 6px; flex-wrap: wrap; }
+  .pill { font-size: 11px; padding: 5px 12px; border-radius: 20px; border: 1px solid var(--border); background: transparent; color: var(--text3); cursor: pointer; font-family: var(--font); transition: all .15s; white-space: nowrap; }
+  .pill:hover { border-color: var(--border2); color: var(--text2); }
+  .pill.active { background: var(--accent); color: #0d0f14; border-color: var(--accent); font-weight: 700; }
+  .pill.pm-active { background: rgba(74,222,128,.1); border-color: rgba(74,222,128,.3); color: var(--accent); font-weight: 700; }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  thead th { padding: 12px 16px; text-align: left; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--text3); font-weight: 500; cursor: pointer; white-space: nowrap; border-bottom: 1px solid var(--border); background: var(--bg3); user-select: none; }
+  thead th:hover { color: var(--text2); }
+  thead th.sort-asc::after { content: ' ↑'; color: var(--accent); }
+  thead th.sort-desc::after { content: ' ↓'; color: var(--accent); }
+  tbody tr { border-bottom: 1px solid var(--border); transition: background .1s; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: var(--bg3); }
+  td { padding: 13px 16px; font-size: 13px; color: var(--text2); vertical-align: middle; white-space: nowrap; }
+  .company-name { font-weight: 500; color: var(--text); font-size: 13px; }
+  .company-sub { font-size: 10px; color: var(--text3); margin-top: 2px; font-family: var(--mono); }
+
+  /* ── Badges ── */
+  .badge { display: inline-block; font-size: 10px; padding: 3px 9px; border-radius: 20px; font-weight: 500; font-family: var(--mono); letter-spacing: .02em; white-space: nowrap; }
+  .b-util { background: rgba(96,165,250,.12); color: #93c5fd; border: 1px solid rgba(96,165,250,.2); }
+  .b-fin { background: rgba(74,222,128,.1); color: #86efac; border: 1px solid rgba(74,222,128,.2); }
+  .b-drama { background: rgba(244,114,182,.1); color: #f9a8d4; border: 1px solid rgba(244,114,182,.2); }
+  .b-game { background: rgba(167,139,250,.1); color: #c4b5fd; border: 1px solid rgba(167,139,250,.2); }
+  .b-ecom { background: rgba(251,191,36,.1); color: #fde68a; border: 1px solid rgba(251,191,36,.2); }
+  .b-health { background: rgba(52,211,153,.1); color: #6ee7b7; border: 1px solid rgba(52,211,153,.2); }
+  .b-edtech { background: rgba(251,146,60,.1); color: #fdba74; border: 1px solid rgba(251,146,60,.2); }
+
+  /* ── Stage ── */
+  .stage { font-size: 10px; padding: 2px 8px; border-radius: 4px; font-family: var(--mono); font-weight: 500; background: var(--bg3); color: var(--text3); border: 1px solid var(--border); }
+
+  /* ── PM Indicator ── */
+  .pm-row { display: flex; align-items: center; gap: 7px; font-size: 12px; }
+  .pm-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .pm-on { background: var(--accent); box-shadow: 0 0 6px rgba(74,222,128,.5); }
+  .pm-off { background: var(--text3); }
+
+  /* ── Spend Bar ── */
+  .spend-cell { display: flex; align-items: center; gap: 8px; }
+  .spend-num { font-family: var(--mono); font-size: 12px; min-width: 52px; }
+  .bar-track { height: 4px; border-radius: 2px; background: var(--bg3); flex: 1; min-width: 40px; max-width: 60px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 2px; transition: width .3s ease; }
+  .bar-g { background: linear-gradient(90deg, #2563eb, #60a5fa); }
+  .bar-m { background: linear-gradient(90deg, #be185d, #f472b6); }
+
+  /* ── Total Spend ── */
+  .total-spend { font-family: var(--mono); font-weight: 500; font-size: 13px; color: var(--text); }
+  .no-spend { color: var(--text3); }
+
+  /* ── Empty State ── */
+  .empty { text-align: center; padding: 48px; color: var(--text3); font-size: 13px; }
+
+  /* ── Add Company Modal ── */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.7); z-index: 100; align-items: center; justify-content: center; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: var(--bg2); border: 1px solid var(--border2); border-radius: 16px; padding: 28px; width: 520px; max-width: 95vw; max-height: 90vh; overflow-y: auto; }
+  .modal-title { font-size: 16px; font-weight: 700; color: var(--text); margin-bottom: 20px; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  .form-group.full { grid-column: 1/-1; }
+  .form-label { font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--text3); }
+  .form-input { background: var(--bg3); border: 1px solid var(--border); color: var(--text); font-family: var(--font); font-size: 13px; padding: 9px 12px; border-radius: 8px; outline: none; transition: border .15s; width: 100%; }
+  .form-input:focus { border-color: rgba(74,222,128,.4); }
+  select.form-input option { background: var(--bg2); }
+  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+
+  /* ── Scrollbar ── */
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--bg3); border-radius: 4px; }
+
+  /* ── Toast ── */
+  .toast { position: fixed; bottom: 24px; right: 24px; background: var(--bg2); border: 1px solid var(--accent); color: var(--accent); font-size: 12px; font-family: var(--mono); padding: 10px 18px; border-radius: 8px; z-index: 200; opacity: 0; transform: translateY(8px); transition: all .25s; }
+  .toast.show { opacity: 1; transform: translateY(0); }
+</style>
+</head>
+<body>
+
+<div class="layout">
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="logo-mark">PM Intel</div>
+      <div class="logo-sub">adtech · sales dashboard</div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">Verticals</div>
+      <div class="nav-item active" onclick="navFilter('all',this)">
+        <span class="nav-dot" style="background:#4ade80"></span> All Companies
+        <span class="nav-count" id="count-all">—</span>
+      </div>
+      <div class="nav-item" onclick="navFilter('Utility',this)">
+        <span class="nav-dot" style="background:#60a5fa"></span> Utility
+        <span class="nav-count" id="count-Utility">—</span>
+      </div>
+      <div class="nav-item" onclick="navFilter('Fintech',this)">
+        <span class="nav-dot" style="background:#4ade80"></span> Fintech
+        <span class="nav-count" id="count-Fintech">—</span>
+      </div>
+      <div class="nav-item" onclick="navFilter('Short Drama',this)">
+        <span class="nav-dot" style="background:#f472b6"></span> Short Drama
+        <span class="nav-count" id="count-Short Drama">—</span>
+      </div>
+      <div class="nav-item" onclick="navFilter('Gaming',this)">
+        <span class="nav-dot" style="background:#a78bfa"></span> Gaming
+        <span class="nav-count" id="count-Gaming">—</span>
+      </div>
+      <div class="nav-item" onclick="navFilter('E-commerce',this)">
+        <span class="nav-dot" style="background:#fbbf24"></span> E-commerce
+        <span class="nav-count" id="count-E-commerce">—</span>
+      </div>
+      <div class="nav-item" onclick="navFilter('Health',this)">
+        <span class="nav-dot" style="background:#34d399"></span> Health
+        <span class="nav-count" id="count-Health">—</span>
+      </div>
+      <div class="nav-item" onclick="navFilter('Edtech',this)">
+        <span class="nav-dot" style="background:#fb923c"></span> Edtech
+        <span class="nav-count" id="count-Edtech">—</span>
+      </div>
+    </div>
+    <div class="sidebar-footer">
+      <div class="update-tag">Last updated<br>Apr 13, 2026</div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+    <div class="header">
+      <div>
+        <div class="page-title">Performance Marketing Intelligence</div>
+        <div class="page-sub">adtech · sales pipeline · Q2 2026</div>
+      </div>
+      <div class="header-actions">
+        <button class="btn" onclick="exportCSV()">↓ Export CSV</button>
+        <button class="btn btn-primary" onclick="openModal()">+ Add Company</button>
+      </div>
+    </div>
+
+    <!-- METRICS -->
+    <div class="metrics">
+      <div class="metric">
+        <div class="metric-label">Companies Tracked</div>
+        <div class="metric-value" id="m-total">—</div>
+        <div class="metric-delta">across <span id="m-verticals">—</span> verticals</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Active in Perf. Marketing</div>
+        <div class="metric-value" id="m-pm">— <span>companies</span></div>
+        <div class="metric-delta delta-up" id="m-pm-pct">—% of tracked</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Total Google Spend / mo</div>
+        <div class="metric-value" id="m-google">—</div>
+        <div class="metric-delta">estimated across all</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Total Meta Spend / mo</div>
+        <div class="metric-value" id="m-meta">—</div>
+        <div class="metric-delta">estimated across all</div>
+      </div>
+    </div>
+
+    <!-- CHARTS -->
+    <div class="charts">
+      <div class="chart-card">
+        <div class="chart-header">
+          <div class="chart-title">Monthly Ad Spend by Vertical</div>
+          <div class="legend">
+            <div class="legend-item"><div class="legend-dot" style="background:#60a5fa"></div>Google</div>
+            <div class="legend-item"><div class="legend-dot" style="background:#f472b6"></div>Meta</div>
+          </div>
+        </div>
+        <div style="position:relative;height:220px">
+          <canvas id="spendChart" role="img" aria-label="Grouped bar chart showing monthly Google and Meta ad spend by vertical">Monthly ad spend across Utility, Fintech, Short Drama, Gaming, E-commerce, Health, Edtech verticals.</canvas>
+        </div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-header">
+          <div class="chart-title">PM Adoption by Vertical</div>
+          <div class="legend">
+            <div class="legend-item"><div class="legend-dot" style="background:#4ade80"></div>Active</div>
+            <div class="legend-item"><div class="legend-dot" style="background:#374151"></div>Not active</div>
+          </div>
+        </div>
+        <div style="position:relative;height:220px">
+          <canvas id="pmChart" role="img" aria-label="Stacked bar chart of performance marketing adoption rate by vertical">PM adoption showing active vs inactive companies per vertical.</canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- TABLE -->
+    <div class="table-section">
+      <div class="table-toolbar">
+        <div class="search-box">
+          <span class="search-icon">⌕</span>
+          <input type="text" id="search" placeholder="Search company…" oninput="render()">
+        </div>
+        <div class="filter-group" id="filter-pills">
+          <button class="pill active" onclick="setFilter('all',this)">All</button>
+          <button class="pill" onclick="setFilter('Utility',this)">Utility</button>
+          <button class="pill" onclick="setFilter('Fintech',this)">Fintech</button>
+          <button class="pill" onclick="setFilter('Short Drama',this)">Short Drama</button>
+          <button class="pill" onclick="setFilter('Gaming',this)">Gaming</button>
+          <button class="pill" onclick="setFilter('E-commerce',this)">E-commerce</button>
+          <button class="pill" onclick="setFilter('Health',this)">Health</button>
+          <button class="pill" onclick="setFilter('Edtech',this)">Edtech</button>
+        </div>
+        <button class="pill" id="pm-toggle" onclick="togglePM()" style="margin-left:auto">PM only</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th onclick="sortBy('name')" id="th-name">Company</th>
+              <th onclick="sortBy('vertical')" id="th-vertical">Vertical</th>
+              <th onclick="sortBy('funding')" id="th-funding">Funding</th>
+              <th onclick="sortBy('stage')" id="th-stage">Stage</th>
+              <th onclick="sortBy('pm')" id="th-pm">PM 1st Channel</th>
+              <th onclick="sortBy('google')" id="th-google">Google/mo</th>
+              <th onclick="sortBy('meta')" id="th-meta">Meta/mo</th>
+              <th onclick="sortBy('total')" id="th-total">Total Spend</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+        <div class="empty" id="empty-state" style="display:none">No companies match your filters.</div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- ADD COMPANY MODAL -->
+<div class="modal-overlay" id="modal" onclick="closeModalOutside(event)">
+  <div class="modal">
+    <div class="modal-title">Add New Company</div>
+    <div class="form-grid">
+      <div class="form-group full">
+        <label class="form-label">Company Name</label>
+        <input class="form-input" id="f-name" type="text" placeholder="e.g. Razorpay">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Vertical</label>
+        <select class="form-input" id="f-vertical">
+          <option value="Utility">Utility</option>
+          <option value="Fintech">Fintech</option>
+          <option value="Short Drama">Short Drama</option>
+          <option value="Gaming">Gaming</option>
+          <option value="E-commerce">E-commerce</option>
+          <option value="Health">Health</option>
+          <option value="Edtech">Edtech</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Stage</label>
+        <select class="form-input" id="f-stage">
+          <option>Pre-Seed</option>
+          <option>Seed</option>
+          <option>Series A</option>
+          <option>Series B</option>
+          <option>Series C</option>
+          <option>Series D</option>
+          <option>Public</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Funding Raised ($M)</label>
+        <input class="form-input" id="f-funding" type="number" placeholder="e.g. 250">
+      </div>
+      <div class="form-group">
+        <label class="form-label">PM First Channel</label>
+        <select class="form-input" id="f-channel">
+          <option value="">Not Active</option>
+          <option>Google UAC</option>
+          <option>Google Search</option>
+          <option>Google Shopping</option>
+          <option>Meta Ads</option>
+          <option>TikTok/Meta</option>
+          <option>Programmatic</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Google Spend/mo ($K)</label>
+        <input class="form-input" id="f-google" type="number" placeholder="e.g. 500">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Meta Spend/mo ($K)</label>
+        <input class="form-input" id="f-meta" type="number" placeholder="e.g. 800">
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="addCompany()">Add Company</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ─────────────────────────────────────────────
+//  DATA — Edit this array to update companies
+// ─────────────────────────────────────────────
+let companies = [
+  { name:'CleanSpark',      vertical:'Utility',      funding:420, stage:'Series C',   pm:true,  pmChannel:'Google UAC',    google:580,  meta:210  },
+  { name:'VoltEdge',        vertical:'Utility',      funding:85,  stage:'Series A',   pm:true,  pmChannel:'Google Search', google:320,  meta:90   },
+  { name:'GridFlow',        vertical:'Utility',      funding:210, stage:'Series B',   pm:false, pmChannel:'',              google:0,    meta:0    },
+  { name:'SolarHop',        vertical:'Utility',      funding:35,  stage:'Seed',       pm:true,  pmChannel:'Meta Ads',      google:80,   meta:340  },
+  { name:'PaySprint',       vertical:'Fintech',      funding:780, stage:'Series D',   pm:true,  pmChannel:'Google UAC',    google:1200, meta:850  },
+  { name:'KashdApp',        vertical:'Fintech',      funding:310, stage:'Series B',   pm:true,  pmChannel:'Meta Ads',      google:450,  meta:920  },
+  { name:'Monify',          vertical:'Fintech',      funding:95,  stage:'Series A',   pm:true,  pmChannel:'Google Search', google:380,  meta:280  },
+  { name:'LendBuddy',       vertical:'Fintech',      funding:510, stage:'Series C',   pm:false, pmChannel:'',              google:120,  meta:60   },
+  { name:'QuikCredit',      vertical:'Fintech',      funding:55,  stage:'Seed',       pm:true,  pmChannel:'Meta Ads',      google:150,  meta:620  },
+  { name:'DramaBox',        vertical:'Short Drama',  funding:230, stage:'Series B',   pm:true,  pmChannel:'Meta Ads',      google:280,  meta:1800 },
+  { name:'ReelPulse',       vertical:'Short Drama',  funding:120, stage:'Series A',   pm:true,  pmChannel:'TikTok/Meta',   google:110,  meta:1400 },
+  { name:'MiniFlicks',      vertical:'Short Drama',  funding:40,  stage:'Seed',       pm:true,  pmChannel:'Meta Ads',      google:60,   meta:980  },
+  { name:'StoryBinge',      vertical:'Short Drama',  funding:390, stage:'Series C',   pm:true,  pmChannel:'Google UAC',    google:560,  meta:2100 },
+  { name:'SnapDrama',       vertical:'Short Drama',  funding:18,  stage:'Pre-Seed',   pm:false, pmChannel:'',              google:0,    meta:0    },
+  { name:'BlastShot',       vertical:'Gaming',       funding:650, stage:'Series C',   pm:true,  pmChannel:'Google UAC',    google:2100, meta:780  },
+  { name:'PixelArena',      vertical:'Gaming',       funding:290, stage:'Series B',   pm:true,  pmChannel:'Meta Ads',      google:560,  meta:1250 },
+  { name:'Tapfinity',       vertical:'Gaming',       funding:110, stage:'Series A',   pm:true,  pmChannel:'Google UAC',    google:880,  meta:450  },
+  { name:'CasualKing',      vertical:'Gaming',       funding:75,  stage:'Seed',       pm:false, pmChannel:'',              google:30,   meta:0    },
+  { name:'GlowCart',        vertical:'E-commerce',   funding:180, stage:'Series A',   pm:true,  pmChannel:'Meta Ads',      google:420,  meta:1100 },
+  { name:'ShopSwift',       vertical:'E-commerce',   funding:440, stage:'Series C',   pm:true,  pmChannel:'Google Shopping',google:1800,meta:960  },
+  { name:'BuyLoop',         vertical:'E-commerce',   funding:95,  stage:'Series A',   pm:false, pmChannel:'',              google:210,  meta:90   },
+  { name:'CartRush',        vertical:'E-commerce',   funding:22,  stage:'Seed',       pm:true,  pmChannel:'Meta Ads',      google:80,   meta:390  },
+  { name:'VitalNow',        vertical:'Health',       funding:320, stage:'Series B',   pm:true,  pmChannel:'Meta Ads',      google:310,  meta:720  },
+  { name:'CalmPath',        vertical:'Health',       funding:75,  stage:'Seed',       pm:true,  pmChannel:'Google UAC',    google:220,  meta:190  },
+  { name:'FitPulse',        vertical:'Health',       funding:510, stage:'Series C',   pm:true,  pmChannel:'Google Search', google:680,  meta:540  },
+  { name:'NutriLoop',       vertical:'Health',       funding:48,  stage:'Seed',       pm:false, pmChannel:'',              google:0,    meta:0    },
+  { name:'LearnLeap',       vertical:'Edtech',       funding:165, stage:'Series B',   pm:true,  pmChannel:'Meta Ads',      google:340,  meta:780  },
+  { name:'SkillSprint',     vertical:'Edtech',       funding:90,  stage:'Series A',   pm:true,  pmChannel:'Google Search', google:460,  meta:290  },
+  { name:'MindMap Pro',     vertical:'Edtech',       funding:32,  stage:'Seed',       pm:false, pmChannel:'',              google:0,    meta:0    },
+];
+
+const VERTICALS = ['Utility','Fintech','Short Drama','Gaming','E-commerce','Health','Edtech'];
+const BADGE_CLASS = {Utility:'b-util',Fintech:'b-fin','Short Drama':'b-drama',Gaming:'b-game','E-commerce':'b-ecom',Health:'b-health',Edtech:'b-edtech'};
+
+let currentFilter = 'all';
+let pmOnly = false;
+let sortKey = 'total';
+let sortDir = 'desc';
+
+function fmtM(n) { if (n >= 1000) return '$' + (n/1000).toFixed(1) + 'B'; return '$' + n + 'M'; }
+function fmtK(n) { if (!n) return '—'; if (n >= 1000) return '$' + (n/1000).toFixed(1) + 'M'; return '$' + n + 'K'; }
+
+function getFiltered() {
+  const q = document.getElementById('search').value.toLowerCase();
+  return companies.filter(c => {
+    if (currentFilter !== 'all' && c.vertical !== currentFilter) return false;
+    if (pmOnly && !c.pm) return false;
+    if (q && !c.name.toLowerCase().includes(q) && !c.vertical.toLowerCase().includes(q) && !c.pmChannel.toLowerCase().includes(q)) return false;
+    return true;
+  });
+}
+
+function render() {
+  updateMetrics();
+  updateSidebar();
+  renderTable();
+}
+
+function updateMetrics() {
+  const all = companies;
+  const pmActive = all.filter(c => c.pm).length;
+  const tG = all.reduce((s,c) => s+c.google, 0);
+  const tM = all.reduce((s,c) => s+c.meta, 0);
+  document.getElementById('m-total').textContent = all.length;
+  document.getElementById('m-verticals').textContent = VERTICALS.length;
+  document.getElementById('m-pm').innerHTML = pmActive + ' <span>companies</span>';
+  document.getElementById('m-pm-pct').textContent = Math.round(pmActive/all.length*100) + '% of tracked';
+  document.getElementById('m-google').textContent = fmtK(tG);
+  document.getElementById('m-meta').textContent = fmtK(tM);
+}
+
+function updateSidebar() {
+  document.getElementById('count-all').textContent = companies.length;
+  VERTICALS.forEach(v => {
+    const el = document.getElementById('count-' + v);
+    if (el) el.textContent = companies.filter(c => c.vertical === v).length;
+  });
+}
+
+function renderTable() {
+  let data = getFiltered();
+  const maxG = Math.max(...companies.map(c => c.google), 1);
+  const maxM = Math.max(...companies.map(c => c.meta), 1);
+
+  data.sort((a, b) => {
+    let av, bv;
+    if (['name','vertical','stage'].includes(sortKey)) {
+      av = a[sortKey]; bv = b[sortKey];
+      return sortDir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
+    }
+    if (sortKey === 'pm') { av = a.pm ? 1 : 0; bv = b.pm ? 1 : 0; }
+    else if (sortKey === 'total') { av = a.google + a.meta; bv = b.google + b.meta; }
+    else { av = a[sortKey]; bv = b[sortKey]; }
+    return sortDir === 'asc' ? av - bv : bv - av;
+  });
+
+  const tbody = document.getElementById('tbody');
+  const empty = document.getElementById('empty-state');
+
+  if (!data.length) {
+    tbody.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  tbody.innerHTML = data.map(c => {
+    const total = c.google + c.meta;
+    const gPct = Math.round((c.google / maxG) * 100);
+    const mPct = Math.round((c.meta / maxM) * 100);
+    return `<tr>
+      <td><div class="company-name">${c.name}</div></td>
+      <td><span class="badge ${BADGE_CLASS[c.vertical]}">${c.vertical}</span></td>
+      <td style="font-family:var(--mono);font-size:12px">${fmtM(c.funding)}</td>
+      <td><span class="stage">${c.stage}</span></td>
+      <td><div class="pm-row"><div class="pm-dot ${c.pm ? 'pm-on' : 'pm-off'}"></div><span style="font-size:12px">${c.pm ? c.pmChannel : '<span style="color:var(--text3)">Not active</span>'}</span></div></td>
+      <td><div class="spend-cell"><span class="spend-num">${fmtK(c.google)}</span>${c.google ? `<div class="bar-track"><div class="bar-fill bar-g" style="width:${gPct}%"></div></div>` : ''}</div></td>
+      <td><div class="spend-cell"><span class="spend-num">${fmtK(c.meta)}</span>${c.meta ? `<div class="bar-track"><div class="bar-fill bar-m" style="width:${mPct}%"></div></div>` : ''}</div></td>
+      <td><span class="${total ? 'total-spend' : 'no-spend'}">${fmtK(total)}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+function sortBy(k) {
+  if (sortKey === k) sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+  else { sortKey = k; sortDir = 'desc'; }
+  document.querySelectorAll('thead th').forEach(t => t.classList.remove('sort-asc','sort-desc'));
+  const th = document.getElementById('th-' + k);
+  if (th) th.classList.add(sortDir === 'asc' ? 'sort-asc' : 'sort-desc');
+  renderTable();
+}
+
+function setFilter(v, el) {
+  currentFilter = v;
+  document.querySelectorAll('#filter-pills .pill').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  renderTable();
+}
+
+function navFilter(v, el) {
+  currentFilter = v;
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  el.classList.add('active');
+  document.querySelectorAll('#filter-pills .pill').forEach(p => {
+    p.classList.remove('active');
+    const oc = p.getAttribute('onclick') || '';
+    if ((v === 'all' && oc.includes("'all'")) || oc.includes(`'${v}'`)) p.classList.add('active');
+  });
+  renderTable();
+}
+
+function togglePM() {
+  pmOnly = !pmOnly;
+  const btn = document.getElementById('pm-toggle');
+  btn.classList.toggle('pm-active', pmOnly);
+  btn.textContent = pmOnly ? '✓ PM only' : 'PM only';
+  renderTable();
+}
+
+// ── Charts ──
+let spendChart, pmChart;
+
+function buildCharts() {
+  const vLabels = VERTICALS.map(v => v.split(' ').map(w => w.slice(0,4)).join(' '));
+  const googleByV = VERTICALS.map(v => companies.filter(c => c.vertical === v).reduce((s,c) => s+c.google, 0));
+  const metaByV   = VERTICALS.map(v => companies.filter(c => c.vertical === v).reduce((s,c) => s+c.meta, 0));
+  const pmByV     = VERTICALS.map(v => companies.filter(c => c.vertical === v && c.pm).length);
+  const nopmByV   = VERTICALS.map((v,i) => companies.filter(c => c.vertical === v).length - pmByV[i]);
+
+  const gridColor = 'rgba(255,255,255,0.06)';
+  const tickColor = '#555b6e';
+  const baseOpts = { responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } }, scales:{ x:{ grid:{ display:false }, ticks:{ color:tickColor, font:{ size:10, family:"'IBM Plex Mono'" } } }, y:{ grid:{ color:gridColor }, ticks:{ color:tickColor, font:{ size:10 } } } } };
+
+  if (spendChart) spendChart.destroy();
+  spendChart = new Chart(document.getElementById('spendChart'), {
+    type:'bar',
+    data:{ labels:vLabels, datasets:[
+      { label:'Google', data:googleByV, backgroundColor:'rgba(96,165,250,0.7)', borderRadius:4, borderSkipped:false },
+      { label:'Meta',   data:metaByV,   backgroundColor:'rgba(244,114,182,0.7)', borderRadius:4, borderSkipped:false }
+    ]},
+    options:{ ...baseOpts, scales:{ ...baseOpts.scales, y:{ ...baseOpts.scales.y, ticks:{ color:tickColor, font:{size:10}, callback:v => v>=1000 ? '$'+(v/1000).toFixed(0)+'M' : '$'+v+'K' } } } }
+  });
+
+  if (pmChart) pmChart.destroy();
+  pmChart = new Chart(document.getElementById('pmChart'), {
+    type:'bar',
+    data:{ labels:vLabels, datasets:[
+      { label:'Active',     data:pmByV,   backgroundColor:'rgba(74,222,128,0.7)',  borderRadius:4, borderSkipped:false },
+      { label:'Not active', data:nopmByV, backgroundColor:'rgba(55,65,81,0.8)',    borderRadius:4, borderSkipped:false }
+    ]},
+    options:{ ...baseOpts, scales:{ ...baseOpts.scales, x:{ ...baseOpts.scales.x, stacked:true }, y:{ ...baseOpts.scales.y, stacked:true, ticks:{ color:tickColor, font:{size:10}, stepSize:1 } } } }
+  });
+}
+
+// ── Add Company ──
+function openModal() { document.getElementById('modal').classList.add('open'); }
+function closeModal() { document.getElementById('modal').classList.remove('open'); }
+function closeModalOutside(e) { if (e.target.id === 'modal') closeModal(); }
+
+function addCompany() {
+  const name = document.getElementById('f-name').value.trim();
+  if (!name) { showToast('Please enter a company name'); return; }
+  const ch = document.getElementById('f-channel').value;
+  companies.push({
+    name,
+    vertical:  document.getElementById('f-vertical').value,
+    funding:   parseFloat(document.getElementById('f-funding').value) || 0,
+    stage:     document.getElementById('f-stage').value,
+    pm:        !!ch,
+    pmChannel: ch,
+    google:    parseFloat(document.getElementById('f-google').value) || 0,
+    meta:      parseFloat(document.getElementById('f-meta').value) || 0,
+  });
+  closeModal();
+  ['f-name','f-funding','f-google','f-meta'].forEach(id => document.getElementById(id).value = '');
+  render();
+  buildCharts();
+  showToast('Company added ✓');
+}
+
+// ── Export CSV ──
+function exportCSV() {
+  const rows = [['Company','Vertical','Funding ($M)','Stage','PM First Channel','Google/mo ($K)','Meta/mo ($K)','Total Spend ($K)']];
+  companies.forEach(c => rows.push([c.name, c.vertical, c.funding, c.stage, c.pmChannel || 'Not Active', c.google, c.meta, c.google+c.meta]));
+  const csv = rows.map(r => r.map(v => `"${v}"`).join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = 'pm-intelligence-' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click();
+  showToast('CSV exported ✓');
+}
+
+// ── Toast ──
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ── Init ──
+render();
+buildCharts();
+</script>
+</body>
+</html>
