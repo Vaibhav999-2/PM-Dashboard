@@ -631,8 +631,25 @@ function showToast(msg) {
 }
 
 // ── Init ──
-render();
-buildCharts();
+fetch("https://script.google.com/macros/s/AKfycbwdyyRdIIsTeZj22fH5FtpF6EK4ZX8OMR51yQb1dDvMlV3ywXV2g-jlf-cAKIJ2QPpwVw/exec")
+  .then(response => response.json())
+  .then(data => {
+
+    // convert Google Sheet data → your dashboard format
+    companies = data.map(item => ({
+      name: item.Company,
+      vertical: item.Vertical,
+      funding: item.Funding,
+      stage: item.Stage,
+      google: Number(item["Google Spend"]) || 0,
+      meta: Number(item["Meta Spend"]) || 0,
+      pmChannel: item["PM First Channel"] || "Not active"
+    }));
+
+    // now run your dashboard
+    render();
+    buildCharts();
+  });
 </script>
-</body>
+</body> 
 </html>
