@@ -641,15 +641,15 @@ fetch("https://script.google.com/macros/s/AKfycbwdyyRdIIsTeZj22fH5FtpF6EK4ZX8OMR
       vertical: item.Vertical,
       funding: item.Funding,
       stage: item.Stage,
-      google: Number(item["Google Spend"]) || 0,
-      meta: Number(item["Meta Spend"]) || 0,
+      google: parseFloat(item["Google Spend"]) || 0,
+      meta: parseFloat(item["Meta Spend"]) || 0,
       pmChannel: item["PM First Channel"] || "Not active"
     }));
 
-    // now run your dashboard
     render();
     buildCharts();
-  });
+  })
+  .catch(err => console.error("ERROR:", err));
 </script>
 </body> 
 </html>
